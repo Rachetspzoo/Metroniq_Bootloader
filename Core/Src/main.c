@@ -30,11 +30,14 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "MemManager.h"
+#include "boot_fw_verify.h"
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+#define FW_STORAGE_CAPACITY 0xE0000
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -68,6 +71,7 @@ static void MPU_Config(void);
 /* USER CODE BEGIN PFP */
 uint8_t ReadSettings(void);
 static void PerformFWUpdate(void);
+void JumptoApp(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -136,12 +140,31 @@ int main(void)
   ReadSettings();
 
   char DeviceName[8];
-  memcpy(&DeviceName[0], (__IO uint8_t *)(OCTOSPI1_BASE + SECTOR_SIZE + 0x2CC), 8);
-  if(memcmp("MetroniQ", DeviceName, 8) == 0)
+  const volatile uint8_t *fw_image =
+      (const volatile uint8_t *)(OCTOSPI1_BASE + SECTOR_SIZE);
+
+  uint32_t verified_size = 0;
+
+  BootFWVerifyResult result = BootFW_VerifyExternal(
+      fw_image,
+      FW_STORAGE_CAPACITY,   // rozmiar zarezerwowanego obszaru FW
+      DeviceSettings.NewFWSize,
+      &verified_size
+  );
+
+  if (result == BOOT_FW_OK)
   {
-	  SetStatusLED(WHITE);
-	  PerformFWUpdate();
-	  Memory_ClearCurrentFW();
+      SetStatusLED(WHITE);
+
+      PerformFWUpdate();
+
+      Memory_ClearCurrentFW();
+  }
+  else
+  {
+      // Nie wykonuj aktualizacji!
+      // Nie kasuj obrazu z zewnętrznej Flash.
+      // Można tutaj zapisać kod błędu lub zasygnalizować go LED.
   }
 
 
@@ -300,7 +323,7 @@ static void PerformFWUpdate(void)
 	    memcpy(data_to_write, (uint8_t *)(OCTOSPI1_BASE + SECTOR_SIZE + y * 32), 32);
 
 	    // Programowanie FlashWord wymaga wskaźnika do bufora 32-bajtowego
-	    HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, FlashAddress, data_to_write);
+	    HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, FlashAddress, (uint32_t)(uintptr_t)data_to_write);
 
 	    FlashAddress += 32;  // zwiększamy o 32 bajty, żeby zachować wyrównanie
 	    y++;

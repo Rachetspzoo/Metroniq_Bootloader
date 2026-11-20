@@ -6,6 +6,7 @@
  */
 
 #include "MemManager.h"
+#include <string.h>
 extern OSPI_HandleTypeDef hospi1;
 
 extern Settings_t DeviceSettings;
@@ -220,7 +221,7 @@ void DTR_MemoryCfg(void)
 	/* Write Configuration register 2 with new dummy cycles */
 	tmp[1] = 0x02;
 	tmp[0] = 0x00;
-	if (HAL_OSPI_Transmit(&hospi1, &tmp, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+	if (HAL_OSPI_Transmit(&hospi1, (uint8_t *)tmp, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
 	{
 		Error_Handler();
 	}
@@ -238,7 +239,7 @@ void DTR_MemoryCfg(void)
 	}
 	/* Write Configuration register 2 with with Octal mode */
 	tmp[0] = 0x80;
-	if (HAL_OSPI_Transmit(&hospi1, &tmp, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
+	if (HAL_OSPI_Transmit(&hospi1, (uint8_t *)tmp, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
 	{
 		Error_Handler();
 	}
